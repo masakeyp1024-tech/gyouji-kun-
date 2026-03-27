@@ -228,10 +228,42 @@ function renderCalendar() {
             const timeStr = ev.start_time.includes('T') ? ev.start_time.split('T')[1].substring(0, 5) : '';
             chip.textContent = `${timeStr} ${ev.title}`;
             
-            chip.addEventListener('click', () => {
+            let pressTimer;
+            let isDragging = false;
+            
+            const startPress = (e) => {
+                isDragging = false;
+                pressTimer = setTimeout(() => {
+                    selectedEventId = ev.id;
+                    document.getElementById('actionSheetModal').classList.add('active');
+                    isDragging = true; 
+                    if(navigator.vibrate) navigator.vibrate(50); // Haptic feedback if available
+                }, 600);
+            };
+            const cancelPress = () => clearTimeout(pressTimer);
+            
+            chip.addEventListener('touchstart', startPress, {passive: true});
+            chip.addEventListener('touchend', cancelPress);
+            chip.addEventListener('touchmove', () => { isDragging = true; cancelPress(); }, {passive: true});
+            
+            chip.addEventListener('mousedown', startPress);
+            chip.addEventListener('mouseup', cancelPress);
+            chip.addEventListener('mouseleave', cancelPress);
+            chip.addEventListener('mousemove', () => { isDragging = true; cancelPress(); });
+            
+            chip.addEventListener('contextmenu', e => e.preventDefault());
+
+            chip.addEventListener('click', (e) => {
+                if(isDragging) return;
+                
+                document.getElementById('detailTitle').textContent = ev.title;
                 const startDisp = ev.start_time ? ev.start_time.replace('T', ' ') : '指定なし';
                 const endDisp = ev.end_time ? ev.end_time.replace('T', ' ') : '指定なし';
-                alert(`【${ev.title}】\n日時: ${startDisp} 〜 ${endDisp}\n場所: ${ev.location || '設定なし'}\n詳細: ${ev.description || 'なし'}`);
+                document.getElementById('detailTime').textContent = `${startDisp} 〜 ${endDisp}`;
+                document.getElementById('detailLocation').textContent = ev.location || '設定なし';
+                document.getElementById('detailDesc').textContent = ev.description || 'なし';
+                
+                document.getElementById('detailsModal').classList.add('active');
             });
             
             dayCell.appendChild(chip);
@@ -249,6 +281,82 @@ prevBtn.addEventListener('click', () => {
 nextBtn.addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar();
+});
+
+// --- Modal & Edit Logic ---
+let selectedEventId = null;
+
+function closeAllModals() {
+    document.getElementById('actionSheetModal').classList.remove('active');
+    document.getElementById('detailsModal').classList.remove('active');
+    document.getElementById('editModal').classList.remove('active');
+    selectedEventId = null;
+}
+
+document.getElementById('btnCloseDetails').addEventListener('click', closeAllModals);
+document.getElementById('btnCloseEdit').addEventListener('click', closeAllModals);
+document.getElementById('btnCancelAction').addEventListener('click', closeAllModals);
+
+['actionSheetModal', 'detailsModal', 'editModal'].forEach(id => {
+    const modal = document.getElementById(id);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeAllModals();
+    });
+});
+
+document.getElementById('btnDeleteEvent').addEventListener('click', () => {
+    if(!selectedEventId) return;
+    if(confirm('本当にこの予定を削除しますか？')) {
+        localEvents = localEvents.filter(ev => ev.id !== selectedEventId);
+        localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
+        renderCalendar();
+        closeAllModals();
+        showError('削除しました'); // Using existing error toast simply for notifying
+        document.getElementById('errorToast').style.background = '#4b5563'; // make it gray not red
+    }
+});
+
+document.getElementById('btnEditEvent').addEventListener('click', () => {
+    if(!selectedEventId) return;
+    const ev = localEvents.find(e => e.id === selectedEventId);
+    if(!ev) return;
+    
+    document.getElementById('editTitle').value = ev.title || '';
+    document.getElementById('editStart').value = ev.start_time || '';
+    document.getElementById('editEnd').value = ev.end_time || '';
+    document.getElementById('editLocation').value = ev.location || '';
+    document.getElementById('editDesc').value = ev.description || '';
+    
+    document.getElementById('actionSheetModal').classList.remove('active');
+    document.getElementById('editModal').classList.add('active');
+});
+
+document.getElementById('btnSaveEdit').addEventListener('click', () => {
+    if(!selectedEventId) return;
+    const evIndex = localEvents.findIndex(e => e.id === selectedEventId);
+    if(evIndex === -1) return;
+    
+    const title = document.getElementById('editTitle').value.trim();
+    if(!title || !document.getElementById('editStart').value) {
+        document.getElementById('errorToast').style.background = '#ef4444'; // Red
+        showError('タイトルと開始日時は必須です。');
+        return;
+    }
+    
+    localEvents[evIndex] = {
+        ...localEvents[evIndex],
+        title: title,
+        start_time: document.getElementById('editStart').value,
+        end_time: document.getElementById('editEnd').value,
+        location: document.getElementById('editLocation').value.trim(),
+        description: document.getElementById('editDesc').value.trim()
+    };
+    
+    localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
+    renderCalendar();
+    closeAllModals();
+    document.getElementById('errorToast').style.background = '#3b82f6'; // Blue
+    showError('予定を更新しました');
 });
 
 // Initial Render
