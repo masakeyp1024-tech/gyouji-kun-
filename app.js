@@ -2,7 +2,11 @@
 lucide.createIcons();
 
 // --- Configuration ---
-const API_KEY = "AIzaSyCJgFqF3WLATaAyn2Cfw6PECa-jkpUhUZQ"; 
+let API_KEY = localStorage.getItem('gemini-api-key');
+if (!API_KEY) {
+    API_KEY = prompt("Google GeminiのAPIキーを入力してください\n（※一度入力すればスマホに記憶されます）", "");
+    if (API_KEY) localStorage.setItem('gemini-api-key', API_KEY);
+}
 const MODEL = "gemini-2.5-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
