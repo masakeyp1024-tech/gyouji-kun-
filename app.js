@@ -166,10 +166,14 @@ function createEventCard(eventData, index) {
         
         showSuccess(saveBtn, '保存しました！');
         
-        // Return to calendar shortly
-        setTimeout(() => {
-            document.querySelector('[data-target="calendarView"]').click();
-        }, 1000);
+        // UX 改善: 保存された予定の月にカレンダーを裏側で合わせておく（次回カレンダーを開いた際に見えるようにする）
+        const eventDate = new Date(startStr);
+        currentDate.setFullYear(eventDate.getFullYear());
+        currentDate.setMonth(eventDate.getMonth());
+        
+        // 登録後も連続して別の予定を保存できるよう、画面の強制移動は行わない
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = '0.5';
     });
 
     return card;
