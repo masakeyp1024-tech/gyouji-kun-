@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>行事自動反映くん</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="icon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="logo">
+                <i data-lucide="calendar-check"></i>
+                <h1>行事反映くん</h1>
+            </div>
+        </header>
+
+        <main class="content">
+            <!-- ========== Calendar View ========== -->
+            <div id="calendarView" class="view">
+                <div class="calendar-header">
+                    <button id="prevMonth" class="icon-btn"><i data-lucide="chevron-left"></i></button>
+                    <h2 id="currentMonthLabel">2026年 3月</h2>
+                    <button id="nextMonth" class="icon-btn"><i data-lucide="chevron-right"></i></button>
+                </div>
+                
+                <div class="calendar-weekdays">
+                    <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+                </div>
+                
+                <div id="calendarGrid" class="calendar-grid">
+                    <!-- Days injected by JS -->
+                </div>
+            </div>
+
+            <!-- ========== Scan View ========== -->
+            <div id="scanView" class="view hidden">
+                <!-- Instruction -->
+                <div class="card intro-card">
+                    <h2>プリントから予定を作成</h2>
+                    <p>スマホのカメラで学校のプリントを撮影するだけで、自動で予定を読み取ります。</p>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="upload-section">
+                    <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden-input">
+                    <label for="imageInput" class="upload-btn primary-btn pulse-anim">
+                        <i data-lucide="camera"></i>
+                        <span>プリントを撮影・選択</span>
+                    </label>
+                </div>
+
+                <!-- Preview Image -->
+                <div id="imagePreviewContainer" class="hidden">
+                    <img id="imagePreview" src="" alt="Selected document">
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden loading-container">
+                    <div class="spinner"></div>
+                    <p>AIがプリントを解析中...<br><span class="text-sm text-gray">少し時間がかかる場合があります</span></p>
+                </div>
+
+                <!-- Results Container (Dynamically Populated) -->
+                <div id="resultsContainer" class="hidden slide-up">
+                    <!-- Event cards will be injected here by app.js -->
+                </div>
+            </div>
+            
+            <div id="errorToast" class="toast hidden"></div>
+        </main>
+        
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="calendarView">
+                <i data-lucide="calendar"></i>
+                <span>カレンダー</span>
+            </button>
+            <button class="nav-item" data-target="scanView">
+                <i data-lucide="scan-line"></i>
+                <span>読み取り追加</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Script references -->
+    <script src="app.js"></script>
+    
+    <!-- Register Service Worker for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

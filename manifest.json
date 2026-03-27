@@ -1,0 +1,16 @@
+{
+  "name": "行事自動反映くん",
+  "short_name": "行事反映",
+  "description": "プリントから予定を自動でカレンダーに登録します",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
