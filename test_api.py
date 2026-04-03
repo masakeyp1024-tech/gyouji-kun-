@@ -3,7 +3,7 @@ import urllib.error
 import json
 import base64
 
-API_KEY = "AIzaSyAP3DjG6auTdJ69HvbeNGJwkKB6dsoIpsk"
+API_KEY = "YOUR_API_KEY_HERE"  # Google AI StudioでAPIキーを取得してください
 MODEL = "gemini-2.5-flash"
 url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}"
 

@@ -2,7 +2,7 @@ import urllib.request
 import urllib.error
 import json
 
-API_KEY = "AIzaSyAP3DjG6auTdJ69HvbeNGJwkKB6dsoIpsk"
+API_KEY = "YOUR_API_KEY_HERE"  # Google AI StudioでAPIキーを取得してください
 url = f"https://generativelanguage.googleapis.com/v1beta/models?key={API_KEY}"
 
 try:

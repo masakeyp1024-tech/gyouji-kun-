@@ -2,20 +2,59 @@
 lucide.createIcons();
 
 // --- Configuration ---
-let API_KEY = localStorage.getItem('gemini-api-key');
-if (!API_KEY) {
-    API_KEY = prompt("Google GeminiのAPIキーを入力してください\n（※一度入力すればスマホに記憶されます）", "");
-    if (API_KEY) localStorage.setItem('gemini-api-key', API_KEY);
-}
 const MODEL = "gemini-2.5-flash";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
-// Target calendar emails
-const GUESTS = "mame625mame@gmail.com,masakey.p1024@gmail.com";
+function getApiKey() {
+    return localStorage.getItem('gemini-api-key') || '';
+}
+
+function getApiUrl() {
+    const key = getApiKey();
+    return `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+}
+
+function promptApiKey() {
+    const currentKey = getApiKey();
+    const msg = currentKey 
+        ? 'APIキーを変更します。新しいGoogle Gemini APIキーを入力してください：'
+        : 'Google Gemini APIキーを入力してください。\n（Google AI Studio: https://aistudio.google.com/apikey で取得できます）';
+    const newKey = prompt(msg, currentKey);
+    if (newKey && newKey.trim()) {
+        localStorage.setItem('gemini-api-key', newKey.trim());
+        return true;
+    }
+    return false;
+}
+
+// Guest emails (for Google Calendar invites)
+function getGuests() {
+    return localStorage.getItem('gcal-guests') || '';
+}
+
+function promptGuests() {
+    const current = getGuests();
+    const newVal = prompt(
+        'Googleカレンダーの招待先メールアドレスを入力してください。\n（複数ある場合はカンマ区切り）\n\n例: user1@gmail.com,user2@gmail.com',
+        current
+    );
+    if (newVal !== null) {
+        localStorage.setItem('gcal-guests', newVal.trim());
+    }
+}
+
+function openSettings() {
+    promptApiKey();
+    promptGuests();
+}
 
 // --- State ---
 let localEvents = JSON.parse(localStorage.getItem('gyouji-events')) || [];
 let currentDate = new Date();
+
+// --- Settings Button ---
+document.getElementById('settingsBtn').addEventListener('click', () => {
+    openSettings();
+});
 
 // --- DOM Elements ---
 const calendarView = document.getElementById('calendarView');
@@ -49,6 +88,14 @@ imageInput.addEventListener('change', async (e) => {
 
     // Call API
     try {
+        // Check API key
+        if (!getApiKey()) {
+            if (!promptApiKey()) {
+                showError('APIキーが設定されていません。設定してから再度お試しください。');
+                return;
+            }
+        }
+
         showLoading(true);
         // Resize image to max 1600px width/height to avoid huge payloads from phone cameras
         const base64Image = await resizeImageAndGetBase64(file, 1600);
@@ -120,7 +167,11 @@ function createEventCard(eventData, index) {
         <div class="form-actions">
             <button class="primary-btn submit-btn save-btn">
                 <i data-lucide="check-circle"></i>
-                <span>このアプリのカレンダーに保存</span>
+                <span>カレンダーに保存</span>
+            </button>
+            <button class="primary-btn submit-btn gcal-direct-btn" style="background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 75%, #ea4335 100%);">
+                <i data-lucide="calendar-plus"></i>
+                <span>Googleカレンダーに追加</span>
             </button>
         </div>
     `;
@@ -138,27 +189,28 @@ function createEventCard(eventData, index) {
         }, 3000);
     };
 
+    // Helper to get form data from card
+    const getCardEventData = () => ({
+        title: card.querySelector('.event-title').value.trim(),
+        start_time: card.querySelector('.event-start').value,
+        end_time: card.querySelector('.event-end').value,
+        location: card.querySelector('.event-location').value.trim(),
+        description: card.querySelector('.event-desc').value.trim()
+    });
+
     // Save to App Calendar
     const saveBtn = card.querySelector('.save-btn');
     saveBtn.addEventListener('click', () => {
-        const title = card.querySelector('.event-title').value.trim();
-        const startStr = card.querySelector('.event-start').value;
-        const endStr = card.querySelector('.event-end').value;
-        const location = card.querySelector('.event-location').value.trim();
-        const desc = card.querySelector('.event-desc').value.trim();
+        const data = getCardEventData();
 
-        if (!title || !startStr) {
+        if (!data.title || !data.start_time) {
             showError('タイトルと開始日時は必須です。');
             return;
         }
 
         const newEvent = {
             id: Date.now().toString(),
-            title: title,
-            start_time: startStr,
-            end_time: endStr,
-            location: location,
-            description: desc
+            ...data
         };
 
         localEvents.push(newEvent);
@@ -166,14 +218,21 @@ function createEventCard(eventData, index) {
         
         showSuccess(saveBtn, '保存しました！');
         
-        // UX 改善: 保存された予定の月にカレンダーを裏側で合わせておく（次回カレンダーを開いた際に見えるようにする）
-        const eventDate = new Date(startStr);
-        currentDate.setFullYear(eventDate.getFullYear());
-        currentDate.setMonth(eventDate.getMonth());
-        
-        // 登録後も連続して別の予定を保存できるよう、画面の強制移動は行わない
-        saveBtn.disabled = true;
-        saveBtn.style.opacity = '0.5';
+        // Return to calendar shortly
+        setTimeout(() => {
+            document.querySelector('[data-target="calendarView"]').click();
+        }, 1000);
+    });
+
+    // Google Calendar direct add
+    const gcalDirectBtn = card.querySelector('.gcal-direct-btn');
+    gcalDirectBtn.addEventListener('click', () => {
+        const data = getCardEventData();
+        if (!data.title || !data.start_time) {
+            showError('タイトルと開始日時は必須です。');
+            return;
+        }
+        openGoogleCalendar(data);
     });
 
     return card;
@@ -228,42 +287,29 @@ function renderCalendar() {
             const timeStr = ev.start_time.includes('T') ? ev.start_time.split('T')[1].substring(0, 5) : '';
             chip.textContent = `${timeStr} ${ev.title}`;
             
-            let pressTimer;
-            let isDragging = false;
-            
-            const startPress = (e) => {
-                isDragging = false;
-                pressTimer = setTimeout(() => {
-                    selectedEventId = ev.id;
-                    document.getElementById('actionSheetModal').classList.add('active');
-                    isDragging = true; 
-                    if(navigator.vibrate) navigator.vibrate(50); // Haptic feedback if available
-                }, 600);
-            };
-            const cancelPress = () => clearTimeout(pressTimer);
-            
-            chip.addEventListener('touchstart', startPress, {passive: true});
-            chip.addEventListener('touchend', cancelPress);
-            chip.addEventListener('touchmove', () => { isDragging = true; cancelPress(); }, {passive: true});
-            
-            chip.addEventListener('mousedown', startPress);
-            chip.addEventListener('mouseup', cancelPress);
-            chip.addEventListener('mouseleave', cancelPress);
-            chip.addEventListener('mousemove', () => { isDragging = true; cancelPress(); });
-            
-            chip.addEventListener('contextmenu', e => e.preventDefault());
-
+            // Desktop: click to open modal
             chip.addEventListener('click', (e) => {
-                if(isDragging) return;
-                
-                document.getElementById('detailTitle').textContent = ev.title;
-                const startDisp = ev.start_time ? ev.start_time.replace('T', ' ') : '指定なし';
-                const endDisp = ev.end_time ? ev.end_time.replace('T', ' ') : '指定なし';
-                document.getElementById('detailTime').textContent = `${startDisp} 〜 ${endDisp}`;
-                document.getElementById('detailLocation').textContent = ev.location || '設定なし';
-                document.getElementById('detailDesc').textContent = ev.description || 'なし';
-                
-                document.getElementById('detailsModal').classList.add('active');
+                e.stopPropagation();
+                openEventModal(ev);
+            });
+
+            // Mobile: long-press to open modal
+            let pressTimer = null;
+            chip.addEventListener('touchstart', (e) => {
+                chip.classList.add('pressing');
+                pressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    chip.classList.remove('pressing');
+                    openEventModal(ev);
+                }, 500);
+            }, { passive: false });
+            chip.addEventListener('touchend', () => {
+                clearTimeout(pressTimer);
+                chip.classList.remove('pressing');
+            });
+            chip.addEventListener('touchmove', () => {
+                clearTimeout(pressTimer);
+                chip.classList.remove('pressing');
             });
             
             dayCell.appendChild(chip);
@@ -281,82 +327,6 @@ prevBtn.addEventListener('click', () => {
 nextBtn.addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar();
-});
-
-// --- Modal & Edit Logic ---
-let selectedEventId = null;
-
-function closeAllModals() {
-    document.getElementById('actionSheetModal').classList.remove('active');
-    document.getElementById('detailsModal').classList.remove('active');
-    document.getElementById('editModal').classList.remove('active');
-    selectedEventId = null;
-}
-
-document.getElementById('btnCloseDetails').addEventListener('click', closeAllModals);
-document.getElementById('btnCloseEdit').addEventListener('click', closeAllModals);
-document.getElementById('btnCancelAction').addEventListener('click', closeAllModals);
-
-['actionSheetModal', 'detailsModal', 'editModal'].forEach(id => {
-    const modal = document.getElementById(id);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeAllModals();
-    });
-});
-
-document.getElementById('btnDeleteEvent').addEventListener('click', () => {
-    if(!selectedEventId) return;
-    if(confirm('本当にこの予定を削除しますか？')) {
-        localEvents = localEvents.filter(ev => ev.id !== selectedEventId);
-        localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
-        renderCalendar();
-        closeAllModals();
-        showError('削除しました'); // Using existing error toast simply for notifying
-        document.getElementById('errorToast').style.background = '#4b5563'; // make it gray not red
-    }
-});
-
-document.getElementById('btnEditEvent').addEventListener('click', () => {
-    if(!selectedEventId) return;
-    const ev = localEvents.find(e => e.id === selectedEventId);
-    if(!ev) return;
-    
-    document.getElementById('editTitle').value = ev.title || '';
-    document.getElementById('editStart').value = ev.start_time || '';
-    document.getElementById('editEnd').value = ev.end_time || '';
-    document.getElementById('editLocation').value = ev.location || '';
-    document.getElementById('editDesc').value = ev.description || '';
-    
-    document.getElementById('actionSheetModal').classList.remove('active');
-    document.getElementById('editModal').classList.add('active');
-});
-
-document.getElementById('btnSaveEdit').addEventListener('click', () => {
-    if(!selectedEventId) return;
-    const evIndex = localEvents.findIndex(e => e.id === selectedEventId);
-    if(evIndex === -1) return;
-    
-    const title = document.getElementById('editTitle').value.trim();
-    if(!title || !document.getElementById('editStart').value) {
-        document.getElementById('errorToast').style.background = '#ef4444'; // Red
-        showError('タイトルと開始日時は必須です。');
-        return;
-    }
-    
-    localEvents[evIndex] = {
-        ...localEvents[evIndex],
-        title: title,
-        start_time: document.getElementById('editStart').value,
-        end_time: document.getElementById('editEnd').value,
-        location: document.getElementById('editLocation').value.trim(),
-        description: document.getElementById('editDesc').value.trim()
-    };
-    
-    localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
-    renderCalendar();
-    closeAllModals();
-    document.getElementById('errorToast').style.background = '#3b82f6'; // Blue
-    showError('予定を更新しました');
 });
 
 // Initial Render
@@ -400,7 +370,42 @@ function resizeImageAndGetBase64(file, maxDimension) {
     });
 }
 
+// Adjust past dates to future: if a date has already passed, bump year until it's in the future
+function adjustPastDates(events) {
+    const now = new Date();
+    // Set to start of today for comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    function bumpDateString(dtStr) {
+        if (!dtStr) return dtStr;
+        const parts = dtStr.split('T');
+        const dateParts = parts[0].split('-');
+        if (dateParts.length < 3) return dtStr;
+
+        let year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // 0-indexed
+        const day = parseInt(dateParts[2]);
+
+        // Keep adding years until the date is today or in the future
+        while (new Date(year, month, day) < today) {
+            year += 1;
+        }
+
+        dateParts[0] = String(year);
+        return dateParts.join('-') + (parts[1] ? 'T' + parts[1] : '');
+    }
+
+    return events.map(ev => ({
+        ...ev,
+        start_time: bumpDateString(ev.start_time),
+        end_time: bumpDateString(ev.end_time)
+    }));
+}
+
 async function processImageWithGemini(base64Data, mimeType) {
+    const now = new Date();
+    const currentDateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+
     const promptText = `
 以下の画像は学校や保育園などのスケジュールや行事のお知らせです。
 画像から情報を抽出し、**必ず以下の形式のJSON配列（リスト）**で結果を返してください。複数の予定がある場合は配列内に複数含めてください。余計なマークダウンやテキストは一切不要です（純粋なJSON配列テキストのみ出力）。
@@ -415,9 +420,10 @@ async function processImageWithGemini(base64Data, mimeType) {
   }
 ]
 
+・本日は${currentDateStr}です。
+・年が書かれていない場合は、その月日が未来になる最も近い年を使ってください。例えば本日が2026年3月で、画像に2月の予定があれば2027年2月としてください。
 ・時間が不明な場合は開始時刻を08:00としてください。
 ・終了時刻が不明な場合は、開始時刻の1〜2時間後に設定するか、日付のみしかわからない場合は当日の17:00としてください。
-・今年が何年かわからない場合は現在の年（2025または2026年）を推測してください。
 `;
 
     const payload = {
@@ -441,7 +447,7 @@ async function processImageWithGemini(base64Data, mimeType) {
         }
     };
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(getApiUrl(), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -468,6 +474,9 @@ async function processImageWithGemini(base64Data, mimeType) {
         if (!Array.isArray(resultJSON)) {
             resultJSON = [resultJSON];
         }
+
+        // Adjust past dates to future
+        resultJSON = adjustPastDates(resultJSON);
 
         resultsContainer.innerHTML = ''; // Clear previous
 
@@ -507,3 +516,182 @@ function showError(msg) {
         errorToast.classList.add('hidden');
     }, 4000);
 }
+
+// ===================================
+// Event Detail Modal Logic
+// ===================================
+const eventModal = document.getElementById('eventModal');
+const modalViewMode = document.getElementById('modalViewMode');
+const modalEditMode = document.getElementById('modalEditMode');
+const modalTitle = document.getElementById('modalTitle');
+let currentModalEventId = null;
+let deleteConfirmPending = false;
+
+function formatDateTime(dtStr) {
+    if (!dtStr) return '指定なし';
+    // "2026-04-07T08:00" → "2026年4月7日 08:00"
+    const parts = dtStr.split('T');
+    if (parts.length < 2) return dtStr;
+    const [y, m, d] = parts[0].split('-');
+    return `${y}年${parseInt(m)}月${parseInt(d)}日 ${parts[1]}`;
+}
+
+function openEventModal(ev) {
+    currentModalEventId = ev.id;
+    deleteConfirmPending = false;
+
+    // Reset to view mode
+    modalViewMode.classList.remove('hidden');
+    modalEditMode.classList.add('hidden');
+    modalTitle.textContent = '予定の詳細';
+
+    // Populate view fields
+    document.getElementById('viewTitle').textContent = ev.title || '（未設定）';
+    document.getElementById('viewStart').textContent = formatDateTime(ev.start_time);
+    document.getElementById('viewEnd').textContent = formatDateTime(ev.end_time);
+    document.getElementById('viewLocation').textContent = ev.location || '（未設定）';
+    document.getElementById('viewDesc').textContent = ev.description || '（未設定）';
+
+    // Reset delete button
+    const deleteBtn = document.getElementById('modalDeleteBtn');
+    deleteBtn.classList.remove('confirm-delete');
+    deleteBtn.querySelector('span').textContent = '削除';
+
+    // Show modal
+    eventModal.classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function closeEventModal() {
+    eventModal.classList.add('hidden');
+    currentModalEventId = null;
+    deleteConfirmPending = false;
+}
+
+function switchToEditMode() {
+    const ev = localEvents.find(e => e.id === currentModalEventId);
+    if (!ev) return;
+
+    modalTitle.textContent = '予定を編集';
+    modalViewMode.classList.add('hidden');
+    modalEditMode.classList.remove('hidden');
+
+    document.getElementById('editTitle').value = ev.title || '';
+    document.getElementById('editStart').value = ev.start_time || '';
+    document.getElementById('editEnd').value = ev.end_time || '';
+    document.getElementById('editLocation').value = ev.location || '';
+    document.getElementById('editDesc').value = ev.description || '';
+}
+
+function saveEditedEvent() {
+    const idx = localEvents.findIndex(e => e.id === currentModalEventId);
+    if (idx === -1) return;
+
+    const title = document.getElementById('editTitle').value.trim();
+    const start = document.getElementById('editStart').value;
+
+    if (!title || !start) {
+        showError('タイトルと開始日時は必須です。');
+        return;
+    }
+
+    localEvents[idx] = {
+        ...localEvents[idx],
+        title: title,
+        start_time: start,
+        end_time: document.getElementById('editEnd').value,
+        location: document.getElementById('editLocation').value.trim(),
+        description: document.getElementById('editDesc').value.trim()
+    };
+
+    localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
+    closeEventModal();
+    renderCalendar();
+}
+
+function deleteEvent() {
+    if (!deleteConfirmPending) {
+        // First tap: ask for confirmation
+        deleteConfirmPending = true;
+        const deleteBtn = document.getElementById('modalDeleteBtn');
+        deleteBtn.classList.add('confirm-delete');
+        deleteBtn.querySelector('span').textContent = '本当に削除？';
+        // Auto-reset after 3 seconds
+        setTimeout(() => {
+            if (deleteConfirmPending) {
+                deleteConfirmPending = false;
+                deleteBtn.classList.remove('confirm-delete');
+                deleteBtn.querySelector('span').textContent = '削除';
+            }
+        }, 3000);
+        return;
+    }
+
+    // Second tap: confirm delete
+    localEvents = localEvents.filter(e => e.id !== currentModalEventId);
+    localStorage.setItem('gyouji-events', JSON.stringify(localEvents));
+    closeEventModal();
+    renderCalendar();
+}
+
+// ===================================
+// Google Calendar Integration
+// ===================================
+function toGCalDateFormat(dtStr) {
+    // "2026-04-07T08:00" → "20260407T080000"
+    if (!dtStr) return '';
+    return dtStr.replace(/[-:]/g, '').replace(/T/, 'T') + '00';
+}
+
+function openGoogleCalendar(ev) {
+    const startDt = toGCalDateFormat(ev.start_time);
+    let endDt = toGCalDateFormat(ev.end_time);
+
+    // If no end time, default to 1 hour after start
+    if (!endDt && startDt) {
+        const startDate = new Date(ev.start_time);
+        startDate.setHours(startDate.getHours() + 1);
+        const pad = (n) => String(n).padStart(2, '0');
+        endDt = `${startDate.getFullYear()}${pad(startDate.getMonth()+1)}${pad(startDate.getDate())}T${pad(startDate.getHours())}${pad(startDate.getMinutes())}00`;
+    }
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: ev.title || '',
+        dates: `${startDt}/${endDt}`,
+        location: ev.location || '',
+        details: ev.description || '',
+    });
+
+    // Add guests from settings
+    const guests = getGuests();
+    if (guests) {
+        params.set('add', guests);
+    }
+
+    const url = `https://calendar.google.com/calendar/render?${params.toString()}`;
+    window.open(url, '_blank');
+}
+
+// Modal Event Listeners
+document.getElementById('modalCloseBtn').addEventListener('click', closeEventModal);
+document.getElementById('modalEditBtn').addEventListener('click', switchToEditMode);
+document.getElementById('modalDeleteBtn').addEventListener('click', deleteEvent);
+document.getElementById('modalSaveBtn').addEventListener('click', saveEditedEvent);
+document.getElementById('modalGcalBtn').addEventListener('click', () => {
+    const ev = localEvents.find(e => e.id === currentModalEventId);
+    if (ev) openGoogleCalendar(ev);
+});
+document.getElementById('modalCancelBtn').addEventListener('click', () => {
+    // Back to view mode
+    modalTitle.textContent = '予定の詳細';
+    modalViewMode.classList.remove('hidden');
+    modalEditMode.classList.add('hidden');
+});
+
+// Close modal by tapping overlay background
+eventModal.addEventListener('click', (e) => {
+    if (e.target === eventModal) {
+        closeEventModal();
+    }
+});

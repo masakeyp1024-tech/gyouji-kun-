@@ -24,6 +24,9 @@
                 <i data-lucide="calendar-check"></i>
                 <h1>行事反映くん</h1>
             </div>
+            <button id="settingsBtn" class="icon-btn" title="APIキー設定">
+                <i data-lucide="settings"></i>
+            </button>
         </header>
 
         <main class="content">
@@ -80,6 +83,109 @@
             
             <div id="errorToast" class="toast hidden"></div>
         </main>
+
+        <!-- ========== Event Detail Modal ========== -->
+        <div id="eventModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">予定の詳細</h2>
+                    <button id="modalCloseBtn" class="icon-btn modal-close-btn">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+
+                <!-- View Mode -->
+                <div id="modalViewMode">
+                    <div class="modal-detail-list">
+                        <div class="modal-detail-item">
+                            <i data-lucide="type"></i>
+                            <div>
+                                <span class="detail-label">タイトル</span>
+                                <span id="viewTitle" class="detail-value"></span>
+                            </div>
+                        </div>
+                        <div class="modal-detail-item">
+                            <i data-lucide="clock"></i>
+                            <div>
+                                <span class="detail-label">開始</span>
+                                <span id="viewStart" class="detail-value"></span>
+                            </div>
+                        </div>
+                        <div class="modal-detail-item">
+                            <i data-lucide="clock-4"></i>
+                            <div>
+                                <span class="detail-label">終了</span>
+                                <span id="viewEnd" class="detail-value"></span>
+                            </div>
+                        </div>
+                        <div class="modal-detail-item">
+                            <i data-lucide="map-pin"></i>
+                            <div>
+                                <span class="detail-label">場所</span>
+                                <span id="viewLocation" class="detail-value"></span>
+                            </div>
+                        </div>
+                        <div class="modal-detail-item">
+                            <i data-lucide="align-left"></i>
+                            <div>
+                                <span class="detail-label">詳細・持ち物</span>
+                                <span id="viewDesc" class="detail-value"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="modalGcalBtn" class="modal-action-btn gcal-btn full-width-btn">
+                        <i data-lucide="calendar-plus"></i>
+                        <span>Googleカレンダーに追加</span>
+                    </button>
+                    <div class="modal-actions">
+                        <button id="modalEditBtn" class="modal-action-btn edit-btn">
+                            <i data-lucide="pencil"></i>
+                            <span>編集</span>
+                        </button>
+                        <button id="modalDeleteBtn" class="modal-action-btn delete-btn">
+                            <i data-lucide="trash-2"></i>
+                            <span>削除</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="modalEditMode" class="hidden">
+                    <div class="form-group">
+                        <label><i data-lucide="type"></i> タイトル</label>
+                        <input type="text" id="editTitle" placeholder="例: 入学式">
+                    </div>
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label><i data-lucide="clock"></i> 開始</label>
+                            <input type="datetime-local" id="editStart">
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="clock-4"></i> 終了</label>
+                            <input type="datetime-local" id="editEnd">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i data-lucide="map-pin"></i> 場所</label>
+                        <input type="text" id="editLocation" placeholder="例: 体育館">
+                    </div>
+                    <div class="form-group">
+                        <label><i data-lucide="align-left"></i> 詳細・持ち物</label>
+                        <textarea id="editDesc" rows="3" placeholder="水筒、上履きなど"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="modalSaveBtn" class="modal-action-btn save-btn">
+                            <i data-lucide="check-circle"></i>
+                            <span>保存</span>
+                        </button>
+                        <button id="modalCancelBtn" class="modal-action-btn cancel-btn">
+                            <i data-lucide="arrow-left"></i>
+                            <span>戻る</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
@@ -92,71 +198,6 @@
                 <span>読み取り追加</span>
             </button>
         </nav>
-    </div>
-    <!-- Action Sheet Modal -->
-    <div class="modal-overlay" id="actionSheetModal">
-        <div class="action-sheet" id="actionSheetContent">
-            <button class="action-item" id="btnEditEvent">
-                <i data-lucide="edit-2"></i>
-                <span>予定を編集する</span>
-            </button>
-            <button class="action-item danger" id="btnDeleteEvent">
-                <i data-lucide="trash-2"></i>
-                <span>予定を削除する</span>
-            </button>
-            <button class="action-item" id="btnCancelAction">
-                <i data-lucide="x"></i>
-                <span>キャンセル</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Details Modal -->
-    <div class="modal-overlay" id="detailsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="detailTitle">タイトル</h3>
-                <button class="close-btn" id="btnCloseDetails"><i data-lucide="x"></i></button>
-            </div>
-            <div class="detail-line"><i data-lucide="clock"></i><span id="detailTime"></span></div>
-            <div class="detail-line"><i data-lucide="map-pin"></i><span id="detailLocation"></span></div>
-            <div class="detail-line"><i data-lucide="align-left"></i><div id="detailDesc" style="white-space: pre-wrap; font-size: 0.85rem;"></div></div>
-        </div>
-    </div>
-
-    <!-- Edit Modal -->
-    <div class="modal-overlay" id="editModal">
-        <div class="modal-content" style="padding: 1rem;">
-            <div class="modal-header">
-                <h3 class="modal-title">予定の編集</h3>
-                <button class="close-btn" id="btnCloseEdit"><i data-lucide="x"></i></button>
-            </div>
-            <div class="form-group" style="margin-top:0.5rem;">
-                <label style="font-size:0.8rem; margin-bottom:0.2rem;">タイトル</label>
-                <input type="text" id="editTitle" style="padding:0.5rem;" class="event-title">
-            </div>
-            <div class="form-group-row">
-                <div class="form-group">
-                    <label style="font-size:0.8rem; margin-bottom:0.2rem;">開始</label>
-                    <input type="datetime-local" id="editStart" style="padding:0.5rem;">
-                </div>
-                <div class="form-group">
-                    <label style="font-size:0.8rem; margin-bottom:0.2rem;">終了</label>
-                    <input type="datetime-local" id="editEnd" style="padding:0.5rem;">
-                </div>
-            </div>
-            <div class="form-group">
-                <label style="font-size:0.8rem; margin-bottom:0.2rem;">場所</label>
-                <input type="text" id="editLocation" style="padding:0.5rem;">
-            </div>
-            <div class="form-group">
-                <label style="font-size:0.8rem; margin-bottom:0.2rem;">詳細・持ち物</label>
-                <textarea id="editDesc" rows="3" style="padding:0.5rem;"></textarea>
-            </div>
-            <button class="primary-btn submit-btn" id="btnSaveEdit" style="margin-top: 1rem;">
-                <i data-lucide="check"></i> <span>更新する</span>
-            </button>
-        </div>
     </div>
 
     <!-- Script references -->

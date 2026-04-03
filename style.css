@@ -54,7 +54,7 @@ body {
     box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
 }
 
 .logo {
@@ -451,18 +451,14 @@ textarea {
 
 .calendar-day {
     background: #fff;
-    height: 90px;
+    min-height: 80px;
     padding: 0.25rem;
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
     position: relative;
-    overflow-y: auto;
-}
-
-.calendar-day::-webkit-scrollbar {
-    width: 0px;
-    background: transparent; /* Chrome/Safari/Webkit */
+    overflow: hidden;
+    min-width: 0;
 }
 
 .calendar-day.empty-day {
@@ -480,7 +476,6 @@ textarea {
     line-height: 20px;
     border-radius: 50%;
     color: var(--text-main);
-    flex-shrink: 0;
 }
 
 .calendar-day.today .day-number {
@@ -504,129 +499,248 @@ textarea {
     font-weight: 500;
     text-align: left;
     box-shadow: var(--shadow-sm);
-    flex-shrink: 0;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: pan-y;
 }
 
-/* Modal and Action Sheet Styles */
+/* Event Details Modal Override */
+.event-chip:hover {
+    opacity: 0.9;
+}
+
+/* ================================
+   Event Detail Modal
+   ================================ */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    z-index: 1000;
+    z-index: 2000;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
+    animation: fadeIn 0.2s ease forwards;
 }
 
-.modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-content {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 1.5rem 1.5rem 0 0;
     padding: 1.5rem;
-    border-radius: 1rem;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: var(--shadow-lg);
-    transform: translateY(20px);
-    transition: transform 0.2s ease;
-    max-height: 80vh;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
     overflow-y: auto;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.modal-overlay.active .modal-content {
-    transform: translateY(0);
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--input-border);
-    padding-bottom: 0.5rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.modal-title {
-    font-size: 1.1rem;
+.modal-header h2 {
+    font-size: 1.15rem;
     font-weight: 700;
-    color: var(--text-main);
+    color: var(--primary);
 }
 
-.close-btn {
-    background: none;
-    border: none;
+.modal-close-btn {
     color: var(--text-muted);
-    cursor: pointer;
-    padding: 0.25rem;
+    padding: 0.4rem;
 }
 
-.detail-line {
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
-    color: var(--text-main);
+.modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* View Mode Detail List */
+.modal-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal-detail-item {
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(99, 102, 241, 0.04);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(99, 102, 241, 0.08);
 }
 
-.detail-line i {
-    width: 16px;
-    height: 16px;
+.modal-detail-item > i {
+    width: 18px;
+    height: 18px;
     color: var(--primary);
-    margin-top: 2px;
+    flex-shrink: 0;
+    margin-top: 0.15rem;
 }
 
-.action-sheet {
-    background: white;
-    border-radius: 1rem 1rem 0 0;
-    width: 100%;
-    padding: 1rem 0;
-    position: absolute;
-    bottom: 0;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
+.modal-detail-item > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
 }
 
-.modal-overlay.active .action-sheet {
-    transform: translateY(0);
+.detail-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
-.action-item {
-    width: 100%;
-    padding: 1rem 1.5rem;
-    text-align: left;
-    background: none;
-    border: none;
-    font-size: 1rem;
+.detail-value {
+    font-size: 0.95rem;
+    font-weight: 500;
     color: var(--text-main);
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.modal-action-btn {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    border-bottom: 1px solid var(--input-border);
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    border: none;
+    border-radius: 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.action-item:last-child {
-    border-bottom: none;
+.modal-action-btn i {
+    width: 18px;
+    height: 18px;
 }
 
-.action-item.danger {
+.modal-action-btn.edit-btn {
+    background: linear-gradient(135deg, var(--primary) 0%, #818cf8 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.modal-action-btn.edit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.modal-action-btn.delete-btn {
+    background: rgba(239, 68, 68, 0.1);
     color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.action-item.danger i {
-    color: #ef4444;
+.modal-action-btn.delete-btn:hover {
+    background: #ef4444;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.modal-action-btn.save-btn {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.modal-action-btn.save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.modal-action-btn.cancel-btn {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
+    border: 1px solid rgba(107, 114, 128, 0.15);
+}
+
+.modal-action-btn.cancel-btn:hover {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-main);
+}
+
+/* Delete confirmation state */
+.modal-action-btn.delete-btn.confirm-delete {
+    background: #ef4444;
+    color: white;
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+/* Long-press visual feedback on event chip */
+.event-chip.pressing {
+    transform: scale(0.95);
+    opacity: 0.7;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+/* Google Calendar Button */
+.modal-action-btn.gcal-btn {
+    background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 75%, #ea4335 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+}
+
+.modal-action-btn.gcal-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+}
+
+.full-width-btn {
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+/* Scan result card - stack buttons vertically */
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
